@@ -38,7 +38,7 @@ odd = true
     elsif i == 1 || i == 6
       value_to_push = ChessPiece.new($chess_pieces[:p], i)
     end
-    $game_grid.push(value_to_push)
+    $game_grid.push(0)#value_to_push)
     if odd
       $background_color.push(1)
     else
@@ -48,7 +48,9 @@ odd = true
   end
   odd = !odd
 end
-$game_grid[35] = ChessPiece.new($chess_pieces[:b],6)
+$game_grid[18] = ChessPiece.new($chess_pieces[:k],4)
+$game_grid[50] = ChessPiece.new($chess_pieces[:r],0)
+$game_grid[60] = ChessPiece.new($chess_pieces[:k],0)
 
 def reset_background
   odd = true
@@ -144,9 +146,9 @@ end
 def valid_square
   valid = true
   input = gets.chomp
-  check = /\A[0-7][a-hA-H]\z/.match(input)
+  check_valid = /\A[0-7][a-hA-H]\z/.match(input)
 
-  if check == nil
+  if check_valid == nil
     valid = false
   else
     row = input[0].to_i
@@ -162,22 +164,60 @@ def valid_square
 end
 
 blue_turn = true
-play = true
+winner = false
 
-
-while(play)
+while(!winner)
+  system "clear"
   reset_background
   print_game_board
   if blue_turn
     turn_string = "Blue".blue
+    team_turn = "Blue"
   else
     turn_string = "Red".red
+    team_turn = "Red"
   end
 
   puts "#{turn_string}, it is your turn!"
+
+  #find index of king
+  $game_grid.each_with_index do |x, index|
+    if x != 0 && x.value == $chess_pieces[:k] && x.color == team_turn
+      king_index = index
+      break
+    end
+  end
+  #check
+  check_up = true
+  check_down = true
+  check_left = true
+  check_right = true
+  check_top_right = true
+  check_top_left = true
+  check_bot_right = true
+  check_bot_left = true
+  current_down = king_index
+  current_up = king_index
+  current_left = king_index
+  current_right = king_index
+  current_top_left = king_index
+  current_top_right = king_index
+  current_bot_left = king_index
+  current_bot_right = king_index
+
+  #checks each side of king and sees if there is a piece that it can be doomed by
+  while (check_down)
+    if check_down
+      current_down = current_down + 8
+      if (current_down > 63)
+        check_down = false
+      end
+    end
+  end
+
   puts "Choose a piece to move by typing a number followed by a letter (eg. 3A)"
   piece_pos = valid_square
-  if piece_pos != nil && (( $game_grid[piece_pos] == 0) || (blue_turn && $game_grid[piece_pos].color != "Blue") || (!blue_turn && $game_grid[piece_pos].color != "Red"))
+  if piece_pos != nil && (($game_grid[piece_pos] == 0) || (blue_turn && $game_grid[piece_pos].color != "Blue") || (!blue_turn && $game_grid[piece_pos].color != "Red"))
     puts "You cannot move that piece because it is not the color #{turn_string}!"
     piece_pos = nil
   end
@@ -196,18 +236,20 @@ while(play)
     possible_moves = false
     case value_of_selected
     when $chess_pieces[:p] #pawn
+      #one move ahead of pawn
       if $game_grid[piece_pos-(8*negative_multiplier)] == 0
         $background_color[piece_pos-(8*negative_multiplier)] = 2
         possible_moves = true
       end
+
       if $game_grid[piece_pos-(7*negative_multiplier)] != 0 && $game_grid[piece_pos-(7*negative_multiplier)].color != piece.color
         $background_color[piece_pos-(7*negative_multiplier)] = 2
         possible_moves = true
-      elsif (piece_pos % 8 != 0) && $game_grid[piece_pos-(9*negative_multiplier)] != 0 && $game_grid[piece_pos-(9*negative_multiplier)].color != piece.color
+      elsif $game_grid[piece_pos-(9*negative_multiplier)] != 0 && $game_grid[piece_pos-(9*negative_multiplier)].color != piece.color
         $background_color[piece_pos-(9*negative_multiplier)] = 2
         possible_moves = true
       end
-      if piece.turn == 0
+      if piece.turn == 0 && $game_grid[piece_pos-(16*negative_multiplier)] == 0
         $background_color[piece_pos-(16*negative_multiplier)] = 2
         possible_moves = true
       end
@@ -400,8 +442,202 @@ while(play)
             possible_moves = true
           end
         end
+      end
+    when $chess_pieces[:q] #queen
+      up = true
+      down = true
+      right = true
+      left = true
+      current_up_pos = piece_pos
+      current_down_pos = piece_pos
+      current_left_pos = piece_pos
+      current_right_pos = piece_pos
+      while(up || down || left || right)
+        if up
+          current_up_pos = current_up_pos - 8
+          if (current_up_pos < 0)
+            up = false
+          elsif $game_grid[current_up_pos] != 0
+            if $game_grid[current_up_pos].color != piece.color
+              $background_color[current_up_pos] = 2
+              possible_moves = true
+            end
+            up = false
+          else
+            $background_color[current_up_pos] = 2
+            possible_moves = true
+          end
+        end
+        if down
+          current_down_pos = current_down_pos + 8
+          if (current_down_pos > 63)
+            down = false
+          elsif $game_grid[current_down_pos] != 0
+            if $game_grid[current_down_pos].color != piece.color
+              $background_color[current_down_pos] = 2
+              possible_moves = true
+            end
+            down = false
+          else
+            $background_color[current_down_pos] = 2
+            possible_moves = true
+          end
+        end
+        if left
+          current_left_pos = current_left_pos - 1
+          if (current_left_pos / 8) != (piece_pos / 8)
+            left = false
+          elsif $game_grid[current_left_pos] != 0
+            if $game_grid[current_left_pos].color != piece.color
+              $background_color[current_left_pos] = 2
+              possible_moves = true
+            end
+            left = false
+          else
+            $background_color[current_left_pos] = 2
+            possible_moves = true
+          end
+        end
+        if right
+          current_right_pos = current_right_pos + 1
+          if (current_right_pos / 8) != (piece_pos / 8)
+            right = false
+          elsif $game_grid[current_right_pos] != 0
+            if $game_grid[current_right_pos].color != piece.color
+              $background_color[current_right_pos] = 2
+              possible_moves = true
+            end
+            right = false
+          else
+            $background_color[current_right_pos] = 2
+            possible_moves = true
+          end
+        end
+      end
 
+      l_up = true
+      l_down = true
+      r_up = true
+      r_down = true
+      current_lup_pos = piece_pos
+      current_ldown_pos = piece_pos
+      current_rup_pos = piece_pos
+      current_rdown_pos = piece_pos
+      while(l_up || l_down || r_up || r_down)
+        if l_up
+          last_lup_pos = current_lup_pos
+          current_lup_pos = current_lup_pos - 9
+          if (current_lup_pos < 0 || ((last_lup_pos / 8)-(current_lup_pos / 8)) != 1)
+            l_up = false
+          elsif $game_grid[current_lup_pos] != 0
+            if $game_grid[current_lup_pos].color != piece.color
+              $background_color[current_lup_pos] = 2
+              possible_moves = true
+            end
+            l_up = false
+          else
+            $background_color[current_lup_pos] = 2
+            possible_moves = true
+          end
+        end
 
+        if l_down
+          last_ldown_pos = current_ldown_pos
+          current_ldown_pos = current_ldown_pos + 7
+          if (current_ldown_pos > 63 || ((current_ldown_pos / 8) - (last_ldown_pos / 8)) != 1)
+            l_down = false
+          elsif $game_grid[current_ldown_pos] != 0
+            if $game_grid[current_ldown_pos].color != piece.color
+              $background_color[current_ldown_pos] = 2
+              possible_moves = true
+            end
+            l_down = false
+          else
+            $background_color[current_ldown_pos] = 2
+            possible_moves = true
+          end
+        end
+        if r_up
+          last_rup_pos = current_rup_pos
+          current_rup_pos = current_rup_pos - 7
+          if (current_rup_pos < 0 || ((last_rup_pos / 8)- (current_rup_pos / 8)) != 1)
+            r_up = false
+          elsif $game_grid[current_rup_pos] != 0
+            if $game_grid[current_rup_pos].color != piece.color
+              $background_color[current_rup_pos] = 2
+              possible_moves = true
+            end
+            r_up = false
+          else
+            $background_color[current_rup_pos] = 2
+            possible_moves = true
+          end
+        end
+        if r_down
+          last_rdown_pos = current_rdown_pos
+          current_rdown_pos = current_rdown_pos + 9
+          if (current_rdown_pos > 63 || ((current_rdown_pos / 8) - (last_rdown_pos / 8)) != 1)
+            r_down = false
+          elsif $game_grid[current_rdown_pos] != 0
+            if $game_grid[current_rdown_pos].color != piece.color
+              $background_color[current_rdown_pos] = 2
+              possible_moves = true
+            end
+            r_down = false
+          else
+            $background_color[current_rdown_pos] = 2
+            possible_moves = true
+          end
+        end
+      end
+    when $chess_pieces[:k] #king
+      #above
+      current_up_pos = piece_pos - 8
+      if (current_up_pos >= 0) && ($game_grid[current_up_pos] == 0 || $game_grid[current_up_pos].color != piece.color)
+        $background_color[current_up_pos] = 2
+        possible_moves = true
+      end
+      #below
+      current_down_pos = piece_pos + 8
+      if (current_down_pos < 64) && ($game_grid[current_down_pos] == 0 || $game_grid[current_down_pos].color != piece.color)
+        $background_color[current_down_pos] = 2
+        possible_moves = true
+      end
+      #left
+      current_left_pos = piece_pos - 1
+      if (current_left_pos / 8 == piece_pos / 8) && ($game_grid[current_left_pos] == 0 || $game_grid[current_left_pos].color != piece.color)
+        $background_color[current_left_pos] = 2
+        possible_moves = true
+      end
+      #right
+      current_right_pos = piece_pos + 1
+      if (current_right_pos / 8 == piece_pos / 8) && ($game_grid[current_right_pos] == 0 || $game_grid[current_right_pos].color != piece.color)
+        $background_color[current_right_pos] = 2
+        possible_moves = true
+      end
+      #top left
+      current_lup_pos = piece_pos - 9
+      if current_lup_pos >= 0 && ((piece_pos / 8)-(current_lup_pos / 8)) == 1 && ($game_grid[current_lup_pos] == 0 || $game_grid[current_lup_pos].color != piece.color)
+        $background_color[current_lup_pos] = 2
+        possible_moves = true
+      end
+      #bottom left
+      current_ldown_pos = piece_pos + 7
+      if current_ldown_pos < 64 && ((current_ldown_pos / 8) - (piece_pos / 8)) == 1 && ($game_grid[current_ldown_pos] == 0 || $game_grid[current_ldown_pos].color != piece.color)
+        $background_color[current_ldown_pos] = 2
+        possible_moves = true
+      end
+      #top right
+      current_rup_pos = piece_pos - 7
+      if current_rup_pos >= 0 && ((piece_pos / 8) - (current_rup_pos / 8)) == 1 && ($game_grid[current_rup_pos] == 0 || $game_grid[current_rup_pos].color != piece.color)
+        $background_color[current_rup_pos] = 2
+        possible_moves = true
+      end
+      #bottom right
+      current_rdown_pos = piece_pos + 9
+      if current_rdown_pos < 64 && ((current_rdown_pos / 8) - (piece_pos / 8)) == 1 && ($game_grid[current_rdown_pos] == 0 || $game_grid[current_rdown_pos].color != piece.color )
+        $background_color[current_rdown_pos] = 2
+        possible_moves = true
       end
     end
 
@@ -438,10 +674,32 @@ while(play)
       end
       $game_grid[move_pos] = temp
 
-
+      if value_of_selected == $chess_pieces[:p]
+        if blue_turn && (move_pos / 8) == 0
+          $game_grid[move_pos] = ChessPiece.new($chess_pieces[:q], 6)
+        elsif !blue_turn && (move_pos / 8) == 7
+          $game_grid[move_pos] = ChessPiece.new($chess_pieces[:q], 0)
+        end
+      end
       blue_turn = !blue_turn
     end
   end
 
-  system "clear"
+  count_kings = 0
+  $game_grid.each do |x|
+    if x != 0 && x.value == $chess_pieces[:k]
+      count_kings += 1
+    end
+  end
+
+  if count_kings != 2
+    winner = true
+    blue_turn = !blue_turn
+  end
+end
+
+if blue_turn
+  puts "Blue".blue + ", you are the winner!"
+else
+  puts "Red".red + ", you are the winner!"
 end
