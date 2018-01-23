@@ -48,9 +48,23 @@ odd = true
   end
   odd = !odd
 end
-$game_grid[18] = ChessPiece.new($chess_pieces[:k],4)
-$game_grid[50] = ChessPiece.new($chess_pieces[:r],0)
-$game_grid[60] = ChessPiece.new($chess_pieces[:k],0)
+=begin #checkmate test
+$game_grid[63] = ChessPiece.new($chess_pieces[:k],4)
+$game_grid[31] = ChessPiece.new($chess_pieces[:b],0)
+$game_grid[44] = ChessPiece.new($chess_pieces[:b],0)
+$game_grid[47] = ChessPiece.new($chess_pieces[:k],0)
+=end
+
+ #draw test
+$game_grid[7] = ChessPiece.new($chess_pieces[:k],4)
+$game_grid[22] = ChessPiece.new($chess_pieces[:q],0)
+$game_grid[13] = ChessPiece.new($chess_pieces[:k],0)
+
+
+#$game_grid[18] = ChessPiece.new($chess_pieces[:k],4)
+#$game_grid[63] = ChessPiece.new($chess_pieces[:k],0)
+#$game_grid[0] = ChessPiece.new($chess_pieces[:p],0)
+
 
 def reset_background
   odd = true
@@ -163,31 +177,35 @@ def valid_square
   end
 end
 
-blue_turn = true
-winner = false
-
-while(!winner)
-  system "clear"
-  reset_background
-  print_game_board
+def check_piece check_side, current, checked, bishop = false
+  if bishop #for all checks that diagonal
+    if check_side && $game_grid[current] != 0 && ($game_grid[current].value == $chess_pieces[:b] || $game_grid[current].value == $chess_pieces[:q])
+      checked = true
+      check_side = false
+    end
+  else #for non diagonal checks
+    if check_side && $game_grid[current] != 0 && ($game_grid[current].value == $chess_pieces[:r] || $game_grid[current].value == $chess_pieces[:q] || $game_grid[current].value == $chess_pieces[:k])
+      checked = true
+      check_side = false
+    end
+  end
+  return checked, check_side
+end
+def check_pawn check_side, current, checked, king_index, difference, team_turn, piece = $chess_pieces[:p]
+  if check_side && $game_grid[current] != 0 && $game_grid[current].value == piece && $game_grid[current + difference] == $game_grid[king_index] && $game_grid[current].color != team_turn
+    checked = true
+    check_side = false
+  end
+  return checked, check_side
+end
+def check_current_tile king_index, blue_turn
   if blue_turn
-    turn_string = "Blue".blue
     team_turn = "Blue"
   else
-    turn_string = "Red".red
     team_turn = "Red"
   end
 
-  puts "#{turn_string}, it is your turn!"
-
-  #find index of king
-  $game_grid.each_with_index do |x, index|
-    if x != 0 && x.value == $chess_pieces[:k] && x.color == team_turn
-      king_index = index
-      break
-    end
-  end
-  #check
+  checked = false
   check_up = true
   check_down = true
   check_left = true
@@ -205,13 +223,165 @@ while(!winner)
   current_bot_left = king_index
   current_bot_right = king_index
 
-  #checks each side of king and sees if there is a piece that it can be doomed by
-  while (check_down)
+  #checks each side of king and sees if there is a piece that it can be checked by
+  while (check_down || check_up || check_left || check_right || check_top_left || check_top_right || check_bot_left || check_bot_right)
     if check_down
       current_down = current_down + 8
-      if (current_down > 63)
+      if (current_down > 63)  || ($game_grid[current_down] != 0 && $game_grid[current_down].color == team_turn)
         check_down = false
       end
+      checked, check_down = check_piece(check_down, current_down, checked)
+      checked, check_down = check_pawn(check_down, current_down, checked, king_index, 8, team_turn, $chess_pieces[:k])
+    end
+    if check_up
+      current_up = current_up - 8
+      if (current_up < 0)  || ($game_grid[current_up] != 0 && $game_grid[current_up].color == team_turn)
+        check_up = false
+      end
+      checked, check_up = check_piece(check_up, current_up, checked)
+      checked, check_up = check_pawn(check_up, current_up, checked, king_index, -8, team_turn, $chess_pieces[:k])
+    end
+    if check_left
+      current_left = current_left - 1
+      if ((current_left / 8) != (king_index / 8))  || ($game_grid[current_left] != 0 && $game_grid[current_left].color == team_turn)
+        check_left = false
+      end
+      checked, check_left = check_piece(check_left, current_left, checked)
+      checked, check_up = check_pawn(check_up, current_up, checked, king_index, -1, team_turn, $chess_pieces[:k])
+    end
+    if check_right
+      current_right = current_right + 1
+      if ((current_right / 8) != (king_index / 8))  || ($game_grid[current_right] != 0 && $game_grid[current_right].color == team_turn)
+        check_right = false
+      end
+      checked, check_right = check_piece(check_right, current_right, checked)
+      checked, check_right = check_pawn(check_right, current_right, checked, king_index, 1, team_turn, $chess_pieces[:k])
+    end
+    if check_top_left
+      last_top_left = current_top_left
+      current_top_left = current_top_left - 9
+      if (current_top_left < 0) || ((last_top_left / 8)-(current_top_left / 8) != 1)  || ($game_grid[current_top_left] != 0 && $game_grid[current_top_left].color == team_turn)
+        check_top_left = false
+      end
+      checked, check_top_left = check_piece(check_top_left, current_top_left, checked, true)
+      checked, check_top_left = check_pawn(check_top_left, current_top_left, checked, king_index, 9, team_turn) if blue_turn
+      checked, check_top_left = check_pawn(check_top_left, current_top_left, checked, king_index, 9, team_turn, $chess_pieces[:k])
+    end
+    if check_top_right
+      last_top_right = current_top_right
+      current_top_right = current_top_right - 7
+      if (current_top_right < 0) || ((last_top_right / 8)-(current_top_right / 8) != 1)  || ($game_grid[current_top_right] != 0 && $game_grid[current_top_right].color == team_turn)
+        check_top_right = false
+      end
+      checked, check_top_right = check_piece(check_top_right, current_top_right, checked, true)
+      checked, check_top_right = check_pawn(check_top_right, current_top_right, checked, king_index, 7, team_turn) if blue_turn
+      checked, check_top_right = check_pawn(check_top_right, current_top_right, checked, king_index, 7, team_turn, $chess_pieces[:k])
+    end
+    if check_bot_left
+      last_bot_left = current_bot_left
+      current_bot_left = current_bot_left + 7
+      if (current_bot_left > 63) || ((current_bot_left / 8)-(last_bot_left / 8) != 1) || ($game_grid[current_bot_left] != 0 && $game_grid[current_bot_left].color == team_turn)
+        check_bot_left = false
+      end
+      checked, check_bot_left = check_piece(check_bot_left, current_bot_left, checked, true)
+      checked, check_bot_left = check_pawn(check_bot_left, current_bot_left, checked, king_index, -7, team_turn) if !blue_turn
+      checked, check_bot_left = check_pawn(check_bot_left, current_bot_left, checked, king_index, -7, team_turn, $chess_pieces[:k])
+    end
+    if check_bot_right
+      last_bot_right = current_bot_right
+      current_bot_right = current_bot_right + 9
+      if (current_bot_right > 63) || ((current_bot_right / 8)-(last_bot_right / 8) != 1) || ($game_grid[current_bot_right] != 0 && $game_grid[current_bot_right].color == team_turn)
+        check_bot_right = false
+      end
+      checked, check_bot_right = check_piece(check_bot_right, current_bot_right, checked, true)
+      checked, check_bot_right = check_pawn(check_bot_right, current_bot_right, checked, king_index, -9, team_turn) if !blue_turn
+      checked, check_bot_right = check_pawn(check_bot_right, current_bot_right, checked, king_index, -9, team_turn, $chess_pieces[:k])
+    end
+  end
+
+  knight_moves_arr = [6, 15, 10, 17]
+  knight_moves_arr.each do |x|
+    check_knight_above = king_index - x
+    check_knight_below = king_index + x
+    if check_knight_above >= 0 && $game_grid[check_knight_above] != 0 && $game_grid[check_knight_above].value == $chess_pieces[:n] && $game_grid[check_knight_above].color != $game_grid[king_index].color
+      if (x < 11 && ((king_index / 8) - (check_knight_above / 8) == 1)) || (x > 11 && ((king_index / 8) - (check_knight_above / 8) == 2))
+        checked = true
+      end
+    end
+    if check_knight_below < 64  && $game_grid[check_knight_below] != 0 && $game_grid[check_knight_below].value == $chess_pieces[:n] && $game_grid[check_knight_below].color != $game_grid[king_index].color
+      if (x < 11 && ((check_knight_below / 8) - (king_index / 8) == 1)) || (x > 11 && ((check_knight_below / 8) -(king_index / 8) == 2))
+        checked = true
+      end
+    end
+  end
+  return checked
+end
+
+blue_turn = true
+draw = false
+winner = false
+
+while(!winner)
+  system "clear"
+  reset_background
+  print_game_board
+  if blue_turn
+    turn_string = "Blue".blue
+    team_turn = "Blue"
+  else
+    turn_string = "Red".red
+    team_turn = "Red"
+  end
+
+  puts "#{turn_string}, it is your turn!"
+
+  #find index of king
+  king_index = nil
+  $game_grid.each_with_index do |x, index|
+    if x != 0 && x.value == $chess_pieces[:k] && x.color == team_turn
+      king_index = index
+      break
+    end
+  end
+
+  checked = check_current_tile(king_index, blue_turn)
+
+  check_around_arr = [7,8,9,1]
+  open_spots = 0
+  times_checked = 0
+  check_around_arr.each do |index|
+    check_above = king_index - index
+    check_below = king_index + index
+    if $game_grid[check_above] == 0 && ((index < 2 && (check_above / 8 == king_index / 8)) || (index > 2 && ((king_index / 8) - (check_above / 8) == 1)))
+      open_spots += 1
+      check_tile = check_current_tile(check_above, blue_turn)
+      if check_tile
+        times_checked += 1
+      end
+    end
+    if $game_grid[check_below] == 0 && ((index < 2 && (check_below / 8 == king_index / 8)) || (index > 2 && ((check_below / 8) - (king_index / 8) == 1)))
+      open_spots += 1
+      check_tile = check_current_tile(check_below, blue_turn)
+      if check_tile
+        times_checked += 1
+      end
+    end
+  end
+
+  if checked
+    if open_spots == times_checked
+      puts "Checkmate"
+      blue_turn = false
+      winner = true
+      break
+    else
+      puts "Check"
+    end
+  else
+    if open_spots == times_checked
+      puts "It's a draw!"
+      draw = true
+      break
     end
   end
 
@@ -674,6 +844,7 @@ while(!winner)
       end
       $game_grid[move_pos] = temp
 
+      #if a pawn reaches the opposite side of the board it turns into a queen
       if value_of_selected == $chess_pieces[:p]
         if blue_turn && (move_pos / 8) == 0
           $game_grid[move_pos] = ChessPiece.new($chess_pieces[:q], 6)
@@ -698,8 +869,10 @@ while(!winner)
   end
 end
 
-if blue_turn
-  puts "Blue".blue + ", you are the winner!"
-else
-  puts "Red".red + ", you are the winner!"
+if !draw
+  if blue_turn
+    puts "Blue".blue + ", you are the winner!"
+  else
+    puts "Red".red + ", you are the winner!"
+  end
 end
